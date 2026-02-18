@@ -155,3 +155,20 @@ input {
   .layout { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; }
 }
+
+
+.status {
+  margin-top: 0.75rem;
+  color: var(--text-soft);
+}
+
+.list-item.inline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.list-item.main {
+  margin: 0;
+}
