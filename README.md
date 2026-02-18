@@ -1,32 +1,31 @@
 # Fresher - Bulby Beats
 
-Bulby Beats is a Spotify-inspired web music player with a neon glass "bulby" UI and **search-driven playback** powered by YouTube stream resolution.
+Bulby Beats is a Spotify-inspired, fully functional web music player clone with a neon "bulby" glassmorphism UI.
 
 ## Features
 
-- Search for songs by name (YouTube-backed search)
-- Play/pause/next/previous controls
-- Queue management (add/remove)
-- Playlist management (create/select/add songs)
-- Like/unlike songs and replay liked tracks
-- Seek + volume controls
+- Play, pause, next, previous
+- Seek timeline and volume slider
 - Shuffle and repeat modes (`all`, `one`, `off`)
+- Playback queue with add/remove
+- Multiple playlists + create custom playlists
+- Add track to active playlist
+- Search/discover catalog by title, artist, album
+- Like/unlike songs and instant play from liked list
+- Auto-play next track + repeat handling
 
 ## Run
 
+No build step required.
+
 ```bash
-python3 server.py
+python3 -m http.server 4173
 ```
 
 Then open: `http://localhost:4173`
 
 ## Tech
 
-- Vanilla HTML/CSS/JavaScript frontend
-- Python standard-library HTTP server backend
-- Invidious API integration for YouTube search + stream URL resolution
-
-## Notes
-
-- Internet access is required.
-- Playback relies on available public Invidious instances.
+- Vanilla HTML, CSS, JavaScript
+- HTML5 Audio API for playback controls
+- Public streaming track URLs from SoundHelix demo catalog

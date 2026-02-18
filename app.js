@@ -18,6 +18,83 @@ const state = {
   shuffle: false,
   repeat: 'all',
   status: 'Search for any song to start playing.'
+const tracks = [
+  {
+    id: 'sunrise',
+    title: 'Sunrise Drive',
+    artist: 'Nova Drift',
+    album: 'City Lights',
+    cover:
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1000&q=80',
+    audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+  },
+  {
+    id: 'neon',
+    title: 'Neon Dreams',
+    artist: 'Luma Wave',
+    album: 'Future Pulse',
+    cover:
+      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=80',
+    audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+  },
+  {
+    id: 'midnight',
+    title: 'Midnight Ride',
+    artist: 'Pulse Theory',
+    album: 'Night Runner',
+    cover:
+      'https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&w=1000&q=80',
+    audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+  },
+  {
+    id: 'coastline',
+    title: 'Coastline Echo',
+    artist: 'Seafoam Club',
+    album: 'Golden Hour',
+    cover:
+      'https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=1000&q=80',
+    audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
+  },
+  {
+    id: 'aurora',
+    title: 'Aurora Bloom',
+    artist: 'Aria Lane',
+    album: 'Northern',
+    cover:
+      'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=1000&q=80',
+    audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
+  },
+  {
+    id: 'gravity',
+    title: 'Gravity Loop',
+    artist: 'Zenith',
+    album: 'Orbit',
+    cover:
+      'https://images.unsplash.com/photo-1521335629791-ce4aec67dd47?auto=format&fit=crop&w=1000&q=80',
+    audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
+  }
+];
+
+const trackMap = Object.fromEntries(tracks.map((track) => [track.id, track]));
+const audio = new Audio();
+
+const state = {
+  currentTrackId: tracks[0].id,
+  isPlaying: false,
+  currentTime: 0,
+  duration: 0,
+  volume: 0.8,
+  queue: [],
+  liked: ['aurora'],
+  search: '',
+  shuffle: false,
+  repeat: 'all',
+  playlists: [
+    { id: 'focus', name: 'Focus Flow', tracks: ['sunrise', 'midnight', 'gravity'] },
+    { id: 'night', name: 'Late Night', tracks: ['neon', 'aurora', 'coastline'] },
+    { id: 'trip', name: 'Road Trip', tracks: ['midnight', 'coastline', 'sunrise', 'neon'] }
+  ],
+  activePlaylistId: 'focus'
 };
 
 const app = document.querySelector('#app');
@@ -79,6 +156,42 @@ const playTrack = async (track, pushCurrent = false) => {
   } catch (error) {
     state.isPlaying = false;
     state.status = `Playback failed: ${error.message}`;
+audio.src = trackMap[state.currentTrackId].audio;
+
+const formatTime = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const min = Math.floor(seconds / 60);
+  const sec = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, '0');
+  return `${min}:${sec}`;
+};
+
+const randomTrack = () => {
+  const choices = tracks.filter((track) => track.id !== state.currentTrackId);
+  return choices[Math.floor(Math.random() * choices.length)] || tracks[0];
+};
+
+const setTrack = (trackId) => {
+  if (!trackMap[trackId]) return;
+  state.currentTrackId = trackId;
+  state.currentTime = 0;
+  state.duration = 0;
+  audio.src = trackMap[trackId].audio;
+};
+
+const playTrack = async (trackId, pushCurrent = false) => {
+  if (pushCurrent && trackId !== state.currentTrackId) {
+    state.queue.push(state.currentTrackId);
+  }
+  if (trackId && trackId !== state.currentTrackId) {
+    setTrack(trackId);
+  }
+  try {
+    await audio.play();
+    state.isPlaying = true;
+  } catch {
+    state.isPlaying = false;
   }
   render();
 };
@@ -106,28 +219,31 @@ const nextTrack = async () => {
 
   if (state.repeat === 'one' && state.current) {
     await playTrack(state.current);
+const nextTrack = () => {
+  if (state.queue.length) {
+    setTrack(state.queue.shift());
+    playTrack(state.currentTrackId);
     return;
   }
 
   if (state.shuffle) {
-    const random = source[Math.floor(Math.random() * source.length)];
-    await playTrack(random);
+    setTrack(randomTrack().id);
+    playTrack(state.currentTrackId);
     return;
   }
 
-  const index = source.findIndex((item) => state.current && item.id === state.current.id);
-  const atEnd = index === source.length - 1;
-  if (atEnd && state.repeat === 'off') {
+  const currentIndex = tracks.findIndex((track) => track.id === state.currentTrackId);
+  const isLast = currentIndex === tracks.length - 1;
+  if (isLast && state.repeat === 'off') {
     pauseTrack();
-    state.status = 'Reached end of list.';
-    render();
     return;
   }
-  const nextIndex = index < 0 || atEnd ? 0 : index + 1;
-  await playTrack(source[nextIndex]);
+  const nextIndex = isLast ? 0 : currentIndex + 1;
+  setTrack(tracks[nextIndex].id);
+  playTrack(state.currentTrackId);
 };
 
-const previousTrack = async () => {
+const previousTrack = () => {
   if (audio.currentTime > 4) {
     audio.currentTime = 0;
     return;
@@ -181,6 +297,22 @@ const addToPlaylist = (track) => {
   if (!playlist) return;
   if (!playlist.tracks.find((item) => item.id === track.id)) {
     playlist.tracks.push({ ...track, key: uid() });
+  const currentIndex = tracks.findIndex((track) => track.id === state.currentTrackId);
+  const prevIndex = currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
+  setTrack(tracks[prevIndex].id);
+  playTrack(state.currentTrackId);
+};
+
+const cycleRepeat = () => {
+  state.repeat = state.repeat === 'all' ? 'one' : state.repeat === 'one' ? 'off' : 'all';
+  render();
+};
+
+const toggleLike = (id) => {
+  if (state.liked.includes(id)) {
+    state.liked = state.liked.filter((likedId) => likedId !== id);
+  } else {
+    state.liked.push(id);
   }
   render();
 };
@@ -206,11 +338,29 @@ const renderTrackButton = (track, extraActions = '') => `
 
 const render = () => {
   const playlist = activePlaylist();
+const discoverTracks = () => {
+  const q = state.search.toLowerCase().trim();
+  if (!q) return tracks;
+  return tracks.filter((track) =>
+    [track.title, track.artist, track.album].some((text) => text.toLowerCase().includes(q))
+  );
+};
+
+const activePlaylist = () => state.playlists.find((playlist) => playlist.id === state.activePlaylistId);
+
+const render = () => {
+  const currentTrack = trackMap[state.currentTrackId];
+  const playlist = activePlaylist();
+  const playlistTracks = (playlist?.tracks || []).map((id) => trackMap[id]).filter(Boolean);
+  const queueTracks = state.queue.map((id) => trackMap[id]).filter(Boolean);
+  const discovery = discoverTracks();
+
   app.innerHTML = `
     <div class="layout">
       <aside class="panel col">
         <h1>Bulby Beats</h1>
         <p class="muted">Search and play almost any song from YouTube audio streams.</p>
+        <p class="muted">Luminous Spotify-inspired player.</p>
 
         <section class="panel inset">
           <h2>Playlists</h2>
@@ -221,6 +371,10 @@ const render = () => {
                   `<button data-action="set-playlist" data-id="${p.id}" class="chip ${
                     p.id === state.activePlaylistId ? 'active' : ''
                   }">${p.name}</button>`
+                (playlist) =>
+                  `<button data-action="set-playlist" data-id="${playlist.id}" class="chip ${
+                    state.activePlaylistId === playlist.id ? 'active' : ''
+                  }">${playlist.name}</button>`
               )
               .join('')}
           </div>
@@ -244,6 +398,18 @@ const render = () => {
                   )
                   .join('')
               : '<p class="muted">No songs in this playlist yet.</p>'
+            playlistTracks.length
+              ? playlistTracks
+                  .map(
+                    (track) => `
+                      <button class="list-item" data-action="play" data-id="${track.id}">
+                        <img src="${track.cover}" alt="${track.title}" />
+                        <span>${track.title}<small>${track.artist}</small></span>
+                      </button>
+                    `
+                  )
+                  .join('')
+              : '<p class="muted">No tracks yet. Add tracks from Discover.</p>'
           }
         </section>
       </aside>
@@ -266,6 +432,18 @@ const render = () => {
               <button data-action="repeat" class="${state.repeat !== 'off' ? 'active' : ''}">${repeatLabel()}</button>
               <button data-action="toggle-like" class="${isLikedCurrent() ? 'active' : ''}">${
     isLikedCurrent() ? '♥ Liked' : '♡ Like'
+          <img class="hero-cover" src="${currentTrack.cover}" alt="${currentTrack.title}" />
+          <div>
+            <p class="muted">Now Playing</p>
+            <h2>${currentTrack.title}</h2>
+            <h3>${currentTrack.artist}</h3>
+            <div class="row">
+              <button data-action="toggle-shuffle" class="${state.shuffle ? 'active' : ''}">⤨</button>
+              <button data-action="previous">⏮</button>
+              <button data-action="toggle-play" class="play">${state.isPlaying ? '⏸' : '▶'}</button>
+              <button data-action="next">⏭</button>
+              <button data-action="repeat" class="${state.repeat !== 'off' ? 'active' : ''}">${
+    state.repeat === 'one' ? '🔁1' : '🔁'
   }</button>
             </div>
             <div class="timeline">
@@ -274,6 +452,10 @@ const render = () => {
     state.currentTime
   )}" />
               <span>${formatTime(state.duration)}</span>
+              <input id="seek" type="range" min="0" max="${Math.floor(state.duration || audio.duration || 420)}" value="${Math.floor(
+    state.currentTime
+  )}" />
+              <span>${formatTime(state.duration || audio.duration)}</span>
             </div>
             <div class="timeline">
               <span>Volume</span>
@@ -313,6 +495,29 @@ const render = () => {
                     .join('')
                 : '<p class="muted">No results yet. Search above.</p>'
             }
+            <h2>Discover</h2>
+            <input id="search" placeholder="Search track, artist, album" value="${state.search}" />
+          </div>
+          <div class="grid">
+            ${discovery
+              .map(
+                (track) => `
+                  <article class="card">
+                    <img src="${track.cover}" alt="${track.title}" />
+                    <h4>${track.title}</h4>
+                    <p>${track.artist} • ${track.album}</p>
+                    <div class="row">
+                      <button data-action="play-with-queue" data-id="${track.id}">Play</button>
+                      <button data-action="enqueue" data-id="${track.id}">Queue</button>
+                      <button data-action="add-to-playlist" data-id="${track.id}">+Playlist</button>
+                      <button data-action="like" data-id="${track.id}">${
+                        state.liked.includes(track.id) ? '♥' : '♡'
+                      }</button>
+                    </div>
+                  </article>
+                `
+              )
+              .join('')}
           </div>
         </section>
       </main>
@@ -327,6 +532,16 @@ const render = () => {
                     track,
                     `<button data-action="remove-queue" data-index="${index}">✕</button>`
                   )
+          queueTracks.length
+            ? queueTracks
+                .map(
+                  (track, index) => `
+                    <div class="list-item inline">
+                      <img src="${track.cover}" alt="${track.title}" />
+                      <span>${track.title}<small>${track.artist}</small></span>
+                      <button data-action="remove-queue" data-index="${index}">✕</button>
+                    </div>
+                  `
                 )
                 .join('')
             : '<p class="muted">Queue is empty.</p>'
@@ -335,6 +550,17 @@ const render = () => {
         ${
           state.liked.length
             ? state.liked.map((track) => renderTrackButton(track)).join('')
+            ? state.liked
+                .map((id) => trackMap[id])
+                .map(
+                  (track) => `
+                    <button class="list-item" data-action="play" data-id="${track.id}">
+                      <img src="${track.cover}" alt="${track.title}" />
+                      <span>${track.title}<small>${track.artist}</small></span>
+                    </button>
+                  `
+                )
+                .join('')
             : '<p class="muted">No liked songs yet.</p>'
         }
       </aside>
@@ -405,6 +631,57 @@ app.addEventListener('click', async (event) => {
   } catch (error) {
     state.status = error.message;
     render();
+app.addEventListener('click', (event) => {
+  const target = event.target.closest('[data-action]');
+  if (!target) return;
+  const { action, id, index } = target.dataset;
+
+  switch (action) {
+    case 'toggle-play':
+      state.isPlaying ? pauseTrack() : playTrack(state.currentTrackId);
+      break;
+    case 'play':
+      playTrack(id);
+      break;
+    case 'play-with-queue':
+      playTrack(id, true);
+      break;
+    case 'next':
+      nextTrack();
+      break;
+    case 'previous':
+      previousTrack();
+      break;
+    case 'toggle-shuffle':
+      state.shuffle = !state.shuffle;
+      render();
+      break;
+    case 'repeat':
+      cycleRepeat();
+      break;
+    case 'enqueue':
+      state.queue.push(id);
+      render();
+      break;
+    case 'remove-queue':
+      state.queue.splice(Number(index), 1);
+      render();
+      break;
+    case 'like':
+      toggleLike(id);
+      break;
+    case 'set-playlist':
+      state.activePlaylistId = id;
+      render();
+      break;
+    case 'add-to-playlist': {
+      const playlist = activePlaylist();
+      if (playlist && !playlist.tracks.includes(id)) playlist.tracks.push(id);
+      render();
+      break;
+    }
+    default:
+      break;
   }
 });
 
@@ -417,6 +694,9 @@ app.addEventListener('input', (event) => {
   if (event.target.id === 'volume') {
     state.volume = Number(event.target.value);
     audio.volume = state.volume;
+    const value = Number(event.target.value);
+    state.volume = value;
+    audio.volume = value;
     render();
   }
   if (event.target.id === 'search') {
@@ -428,6 +708,7 @@ app.addEventListener('keydown', async (event) => {
   if (event.target.id === 'search' && event.key === 'Enter') {
     event.preventDefault();
     await searchSongs();
+    render();
   }
 });
 
@@ -437,6 +718,16 @@ app.addEventListener('submit', (event) => {
   const input = document.querySelector('#playlist-name');
   createPlaylist(input.value);
   input.value = '';
+  const name = input.value.trim();
+  if (!name) return;
+  const id = `custom-${Date.now()}`;
+  state.playlists.push({ id, name, tracks: [] });
+  state.activePlaylistId = id;
+  render();
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  state.duration = audio.duration;
   render();
 });
 
@@ -455,6 +746,17 @@ audio.addEventListener('loadedmetadata', () => {
 
 audio.addEventListener('ended', async () => {
   await nextTrack();
+  const timeNodes = document.querySelectorAll('.timeline span:first-child');
+  if (timeNodes[0]) timeNodes[0].textContent = formatTime(state.currentTime);
+});
+
+audio.addEventListener('ended', () => {
+  if (state.repeat === 'one') {
+    audio.currentTime = 0;
+    audio.play();
+    return;
+  }
+  nextTrack();
 });
 
 render();
